@@ -1,11 +1,24 @@
 package ro.pub.cs.systems.pdsd.lab07.xkcdcartoondisplayer.graphicuserinterface;
 
+import java.io.IOException;
+
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+
 import ro.pub.cs.systems.pdsd.lab07.xkcdcartoondisplayer.R;
 import ro.pub.cs.systems.pdsd.lab07.xkcdcartoondisplayer.entities.XkcdCartoonInfo;
 import ro.pub.cs.systems.pdsd.xkcdcartoondisplayer.general.Constants;
 import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.renderscript.Element;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -48,6 +61,23 @@ public class XkcdCartoonDisplayerActivity extends Activity {
 			// - create an instance of a ResponseHandler object
 			// - execute the request, thus obtaining the web page source code
 			
+			String result = null;
+			
+			HttpClient httpClient = new DefaultHttpClient();
+			HttpGet httpWebPageGet = new HttpGet(Constants.XKCD_INTERNET_ADDRESS);
+
+			ResponseHandler<String> responseHandler = new BasicResponseHandler();
+			try {
+				result = httpClient
+						.execute(httpWebPageGet, responseHandler);
+				Log.i("RESPONSE", result);
+			} catch (ClientProtocolException e) {
+				Log.e(Constants.TAG, e.getMessage());
+			} catch (IOException e) {
+				Log.e(Constants.TAG, e.getMessage());
+			}
+			
+			
 			// 2. parse the web page source code
 			// - cartoon title: get the tag whose id equals "ctitle"
 			// - cartoon url
@@ -66,6 +96,27 @@ public class XkcdCartoonDisplayerActivity extends Activity {
 			//   * get the href attribute of the tag
 			//   * prepend the value with the base url: http://www.xkcd.com
 			//   * attach the next button a click listener with the address attached
+			
+			Document document = Jsoup.parse(result);
+			org.jsoup.nodes.Element htmlTag = document.child(0);
+			
+			//ctitle
+			org.jsoup.nodes.Element divTagIdCtitle = htmlTag.getElementsByAttributeValue(Constants.ID_ATTRIBUTE, Constants.CTITLE_VALUE).first();
+			xkcdCartoonInfo.setCartoonTitle(divTagIdCtitle.ownText());
+			
+			//comic value
+			org.jsoup.nodes.Element divTagIdComic = htmlTag.getElementsByAttributeValue(Constants.ID_ATTRIBUTE, Constants.COMIC_VALUE).first();
+			String cartoonInternetAddress = divTagIdComic.getElementsByTag(Constants.IMG_TAG).attr(Constants.SRC_ATTRIBUTE);
+			xkcdCartoonInfo.setCartoonUrl(cartoonInternetAddress);
+			
+			org.jsoup.nodes.Element aTagRelPrev = htmlTag.getElementsByAttributeValue(Constants.REL_ATTRIBUTE, Constants.PREVIOUS_VALUE).first();
+			String previousCartoonInternetAddress = Constants.XKCD_INTERNET_ADDRESS + aTagRelPrev.attr(Constants.HREF_ATTRIBUTE);
+			 
+			
+			org.jsoup.nodes.Element aTagRelNext = htmlTag.getElementsByAttributeValue(Constants.REL_ATTRIBUTE, Constants.NEXT_VALUE).first();
+			String nextCartoonInternetAddress = Constants.XKCD_INTERNET_ADDRESS + aTagRelNext.attr(Constants.HREF_ATTRIBUTE);
+			
+			
 			
 			return xkcdCartoonInfo;
 
