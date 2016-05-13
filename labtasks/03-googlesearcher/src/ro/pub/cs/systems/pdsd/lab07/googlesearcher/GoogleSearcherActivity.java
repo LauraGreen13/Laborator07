@@ -1,19 +1,31 @@
 package ro.pub.cs.systems.pdsd.lab07.googlesearcher;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.impl.client.DefaultHttpClient;
+import ro.pub.cs.systems.pdsd.lab07.googlesearcher.general.Constants;
+
+import java.io.IOException;
 
 public class GoogleSearcherActivity extends Activity {
 	
 	private EditText keywordEditText;
 	private WebView googleResultsWebView;
-	
+
+	private Context context;
 	private class GoogleSearcherThread extends Thread {
 		
 		private String keyword;
@@ -37,6 +49,20 @@ public class GoogleSearcherActivity extends Activity {
 			// - encoding is UTF-8
 			// - history is null
 
+			HttpClient httpClient = new DefaultHttpClient();
+			HttpGet httpGet = new HttpGet(Constants.GOOGLE_INTERNET_ADDRESS + Constants.SEARCH_PREFIX + keyword);
+			ResponseHandler<String> responseHandler = new BasicResponseHandler();
+			String result = null;
+
+			try {
+				result = httpClient.execute(httpGet, responseHandler);
+			} catch (IOException e) {
+				Log.d(Constants.TAG, e.getMessage());
+			}
+
+			googleResultsWebView.loadDataWithBaseURL(Constants.GOOGLE_INTERNET_ADDRESS, result, Constants.MIME_TYPE,
+					Constants.CHARACTER_ENCODING, null);
+
 		}
 	}
 	
@@ -53,6 +79,20 @@ public class GoogleSearcherActivity extends Activity {
 			// prepend the keyword with "search?q=" string
 			// start the GoogleSearcherThread passing the keyword
 
+			String input = keywordEditText.getText().toString();
+			String parameter = "";
+			if (input == null) {
+				Toast.makeText(context, "Invalid Input", Toast.LENGTH_LONG).show();
+			} else {
+				String[] keywords = input.split(" ");
+				int size = keywords.length;
+				for (int i = 0; i < size - 1; i++) {
+					parameter += keywords[i] + "+";
+				}
+				parameter += keywords[size - 1];
+			}
+
+			new GoogleSearcherThread(parameter).start();
 		}
 	}
 
@@ -60,7 +100,8 @@ public class GoogleSearcherActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_google_searcher);
-		
+
+		context = this;
 		keywordEditText = (EditText)findViewById(R.id.keyword_edit_text);
 		googleResultsWebView = (WebView)findViewById(R.id.google_results_web_view);
 		
